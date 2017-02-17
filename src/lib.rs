@@ -1,30 +1,37 @@
 extern crate log;
 extern crate env_logger;
-extern crate chrono;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_json;
+extern crate time;
 
 use std::env;
 use log::{LogRecord, LogLevelFilter};
 use env_logger::LogBuilder;
-use rustc_serialize::json::encode;
-use chrono::Local;
+use serde_json::Value;
 
-pub fn new_builder(app: &'static str) -> LogBuilder {
-    let mut builder = LogBuilder::new();
+pub fn new_builder(attrs: Value) -> LogBuilder {
+    if !attrs.is_object() {
+        panic!("Error: attrs must be an object.");
+    }
 
     let format = move |record: &LogRecord| {
-        let message = record.args().to_string();
-        let string = vec![
-            format!("\"@timestamp\":\"{:?}\"", Local::now()),
-            format!("\"@version\":\"{}\"", "1"),
-            format!("\"message\":{}", encode(&message).unwrap()),
-            format!("\"level\":\"{}\"", record.level()),
-            format!("\"app\":\"{}\"", app),
-        ].join(",");
+        let mut object = json!({
+            "@timestamp": time::now().rfc3339().to_string(),
+            "@version": "1",
+            "message": record.args().to_string(),
+            "level": record.level().to_string(),
+        });
 
-        format!("{{{}}}", string)
+        if let Some(obj) = object.as_object_mut() {
+            for (k, v) in attrs.as_object().unwrap() {
+                obj.insert(k.to_owned(), v.to_owned());
+            }
+        }
+
+        serde_json::to_string(&object).unwrap()
     };
 
+    let mut builder = LogBuilder::new();
     builder.format(format).filter(None, LogLevelFilter::Info);
 
     if env::var("RUST_LOG").is_ok() {

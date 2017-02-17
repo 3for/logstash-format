@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Dennis Dietrich <d.dietrich84@gmail.com>"]
 
 [dependencies]
-log = "^0.3"
-env_logger = "^0.3"
-rustc-serialize = "^0.3"
-chrono = "^0.2"
+log = "0.3"
+env_logger = "0.4"
+serde_json = "0.9"
+time = "0.1"
