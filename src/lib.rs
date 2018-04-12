@@ -9,11 +9,8 @@ use log::{LogRecord, LogLevelFilter};
 use env_logger::LogBuilder;
 use serde_json::Value;
 
-pub fn new_builder(attrs: Value) -> LogBuilder {
-    if !attrs.is_object() {
-        panic!("Error: attrs must be an object.");
-    }
-
+pub fn new_builder<F: 'static>(init: F) -> LogBuilder
+        where F: Fn(&mut Value) -> Value + Sync + Send {
     let format = move |record: &LogRecord| {
         let mut object = json!({
             "@timestamp": time::now().rfc3339().to_string(),
@@ -21,6 +18,8 @@ pub fn new_builder(attrs: Value) -> LogBuilder {
             "message": record.args().to_string(),
             "level": record.level().to_string(),
         });
+
+        let attrs = init(&mut object);
 
         if let Some(obj) = object.as_object_mut() {
             for (k, v) in attrs.as_object().unwrap() {
